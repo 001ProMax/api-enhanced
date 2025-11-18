@@ -17,17 +17,30 @@ module.exports = async (query, request) => {
   if (query.unblock === 'true') {
     try {
       const result = await match(query.id, source)
-      logger.info('开始解灰', query.id, result)
-      if (result.url.includes('kuwo')) {
-        const useProxy = process.env.ENABLE_PROXY || 'false'
-        var proxyUrl = useProxy === 'true' ? process.env.PROXY_URL + result.url : result.url
+      logger.info('Starting unblock(uses modules unblock):', query.id, result)
+      // avoid optional chaining for compatibility
+      let url
+      if (Array.isArray(result)) {
+        url = result[0] && result[0].url ? result[0].url : result[0]
+      } else {
+        url = result && result.url ? result.url : result
       }
-      let url = Array.isArray(result) ? (result[0]?.url || result[0]) : (result.url || result)
+      // decide proxyUrl after we resolved the actual url value
+      let proxyUrl = ''
       if (url) {
+        if (url.includes('kuwo')) {
+          const useProxy = process.env.ENABLE_PROXY || 'false'
+          if (useProxy === 'true' && process.env.PROXY_URL) {
+            proxyUrl = process.env.PROXY_URL + url
+          } else {
+            proxyUrl = url
+          }
+        }
         return {
           status: 200,
           body: {
             code: 200,
+            msg: 'Warning: you can only adjust unblock source in dotenv config, use /song/url/match instead.',
             data: [
               {
                 id: Number(query.id),
